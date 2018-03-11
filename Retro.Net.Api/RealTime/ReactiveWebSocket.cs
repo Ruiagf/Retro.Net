@@ -1,16 +1,16 @@
 ﻿using System;
-using System.Linq;
 using System.Net.WebSockets;
 using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Retro.Net.Api.RealTime.Interfaces;
-using Retro.Net.Api.RealTime.Models;
+using Retro.Net.Api.RealTime.Extensions;
+using Retro.Net.Api.RealTime.Messages.Command;
+using Retro.Net.Api.RealTime.Messages.Event;
 
 namespace Retro.Net.Api.RealTime
 {
-    public class ReactiveWebSocket : ISubject<IWebSocketMessage, GameBoySocketMessage>, IDisposable
+    public class ReactiveWebSocket : ISubject<GameBoyEvent, GameBoyCommand>, IDisposable
     {
         private const int InitialBufferSize = 256;
         private const int BufferSizeIncrement = 64;
@@ -18,16 +18,22 @@ namespace Retro.Net.Api.RealTime
         private readonly SemaphoreSlim _semaphore;
         private readonly CancellationTokenSource _disposing;
         private readonly WebSocket _socket;
-        private readonly IWebSocketMessageSerializer _serializer;
         private bool _hasSubscriber;
         private bool _disposed;
 
-        public ReactiveWebSocket(WebSocket socket, IWebSocketMessageSerializer serializer, CancellationToken token)
+        // We need 2 serializers as this impl is not thread safe.
+        private readonly ProtoMessageSerializer _deSerializer;
+        private readonly ProtoMessageSerializer _serializer;
+        private byte[] _outputBuffer;
+
+        public ReactiveWebSocket(WebSocket socket, CancellationToken token)
         {
             _socket = socket;
-            _serializer = serializer;
             _disposing = new CancellationTokenSource();
             _semaphore = new SemaphoreSlim(1, 1);
+
+            _deSerializer = new ProtoMessageSerializer();
+            _serializer = new ProtoMessageSerializer();
 
             // this is a hack... linked token sources don't seem to work here. dunno if it's because the token is from MVC?
             token.Register(_disposing.Cancel);
@@ -37,9 +43,9 @@ namespace Retro.Net.Api.RealTime
 
         public void OnError(Exception error) => Task.Run(CloseAsync);
 
-        public void OnNext(IWebSocketMessage value) => Task.Run(() => OnNextAsync(value));
+        public void OnNext(GameBoyEvent value) => Task.Run(() => OnNextAsync(value));
 
-        public IDisposable Subscribe(IObserver<GameBoySocketMessage> observer)
+        public IDisposable Subscribe(IObserver<GameBoyCommand> observer)
         {
             lock (_disposing)
             {
@@ -59,7 +65,7 @@ namespace Retro.Net.Api.RealTime
             return this;
         }
 
-        private async Task ReceiveAsync(IObserver<GameBoySocketMessage> observer)
+        private async Task ReceiveAsync(IObserver<GameBoyCommand> observer)
         {
             var buffer = new byte[InitialBufferSize];
             while (!_disposing.IsCancellationRequested)
@@ -83,11 +89,12 @@ namespace Retro.Net.Api.RealTime
                     switch (result.MessageType)
                     {
                         case WebSocketMessageType.Binary:
-                            observer.OnNext(_serializer.DeSerialize(buffer.Segment(length)));
+                            var proto = _deSerializer.FromCompressedArraySegment(buffer.Segment(length), GameBoyCommand.Parser);
+                            observer.OnNext(proto);
                             break;
 
                         case WebSocketMessageType.Text:
-                            observer.OnNext(_serializer.DeSerialize(Encoding.UTF8.GetString(buffer, 0, length)));
+                            observer.OnNext(GameBoyCommand.Parser.ParseJson(Encoding.UTF8.GetString(buffer, 0, length)));
                             break;
 
                         case WebSocketMessageType.Close:
@@ -130,9 +137,8 @@ namespace Retro.Net.Api.RealTime
             }
         }
 
-        private async Task OnNextAsync(IWebSocketMessage value)
+        private async Task OnNextAsync(GameBoyEvent value)
         {
-            var messages = value.Serialize().ToArray();
             if (_disposing.IsCancellationRequested)
             {
                 // Do not throw.
@@ -144,11 +150,8 @@ namespace Retro.Net.Api.RealTime
             {
                 if (_socket.State == WebSocketState.Open)
                 {
-                    for (var i = 0; i < messages.Length; i++)
-                    {
-                        var isLast = i == messages.Length - 1;
-                        await _socket.SendAsync(messages[i], WebSocketMessageType.Binary, isLast, _disposing.Token);
-                    }
+                    var message = _serializer.ToCompressedArraySegment(value, ref _outputBuffer);
+                    await _socket.SendAsync(message, WebSocketMessageType.Binary, true, _disposing.Token);
                 }
                 else if (_socket.State == WebSocketState.CloseReceived)
                 {
@@ -160,7 +163,7 @@ namespace Retro.Net.Api.RealTime
                 _semaphore.Release();
             }
         }
-
+        
         public void Dispose()
         {
             lock (_disposing)

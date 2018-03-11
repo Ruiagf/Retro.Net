@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Linq.Expressions;
+using AutoFixture;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core;
 using Retro.Net.Z80.Core.Decode;
-using Shouldly;
+using Retro.Net.Z80.Core.Interfaces;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -51,11 +53,11 @@ namespace Retro.Net.Tests.Z80.Execute
         {
             using (var fixture = new ExecuteFixture())
             {
-                var result = RngFactory.Build<AccumulatorAndResult>()();
+                var result = new Fixture().Create<AccumulatorAndResult>();
                 fixture.Operation.OpCode(OpCode.RotateLeftDigit);
                 fixture.With(c => c.Mmu.Setup(x => x.ReadByte(c.Registers.HL)).Returns(c.Byte).Verifiable(),
                     c => c.Alu.Setup(x => x.RotateLeftDigit(c.InitialAccumulator.A, c.Byte)).Returns(result).Verifiable());
-                fixture.Assert(c => c.Accumulator.A.ShouldBe(result.Accumulator),
+                fixture.Assert(c => c.Accumulator.A.Should().Be(result.Accumulator),
                     c => c.Mmu.Verify(x => x.WriteByte(c.Registers.HL, result.Result)));
             }
         }
@@ -65,11 +67,11 @@ namespace Retro.Net.Tests.Z80.Execute
         {
             using (var fixture = new ExecuteFixture())
             {
-                var result = RngFactory.Build<AccumulatorAndResult>()();
+                var result = new Fixture().Create<AccumulatorAndResult>();
                 fixture.Operation.OpCode(OpCode.RotateRightDigit);
                 fixture.With(c => c.Mmu.Setup(x => x.ReadByte(c.Registers.HL)).Returns(c.Byte).Verifiable(),
                     c => c.Alu.Setup(x => x.RotateRightDigit(c.InitialAccumulator.A, c.Byte)).Returns(result).Verifiable());
-                fixture.Assert(c => c.Accumulator.A.ShouldBe(result.Accumulator),
+                fixture.Assert(c => c.Accumulator.A.Should().Be(result.Accumulator),
                     c => c.Mmu.Verify(x => x.WriteByte(c.Registers.HL, result.Result)));
             }
         }
@@ -88,7 +90,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(op).RandomRegister(out var o).RandomLiterals();
                 fixture.With(c => c.Alu.Setup(c.Alu8Call(f, Operand.A, o)).Returns(c.Byte).Verifiable());
-                fixture.Assert(c => c.Accumulator.A.ShouldBe(c.Byte));
+                fixture.Assert(c => c.Accumulator.A.Should().Be(c.Byte));
             }
         }
 
@@ -98,7 +100,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(op).RandomRegister(out var o).RandomLiterals().UseAlternativeFlagAffection(alternativeFlags);
                 fixture.With(c => c.Alu.Setup(c.Alu8Call(f, o)).Returns(c.Byte).Verifiable());
-                fixture.Assert(c => c.Operand8(o).ShouldBe(c.Byte));
+                fixture.Assert(c => c.Operand8(o).Should().Be(c.Byte));
 
                 if (alternativeFlags)
                 {

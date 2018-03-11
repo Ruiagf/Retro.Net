@@ -1,3 +1,4 @@
+using Bogus;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 
@@ -5,6 +6,7 @@ namespace Retro.Net.Tests.Z80.Decode
 {
     public class OperationFactory
     {
+        private static readonly Randomizer Rng = new Faker().Random;
         private static readonly Operand[] Registers = {Operand.A, Operand.B, Operand.C, Operand.D, Operand.E, Operand.H, Operand.L};
         private static readonly Operand[] Registers16 = { Operand.AF, Operand.BC, Operand.DE, Operand.HL };
 
@@ -50,39 +52,39 @@ namespace Retro.Net.Tests.Z80.Decode
 
         public OperationFactory RandomRegister(out Operand o)
         {
-            o = _operand1 = Rng.Pick(Registers);
+            o = _operand1 = Rng.ArrayElement(Registers);
             return this;
         }
 
         public OperationFactory RandomRegister2(out Operand o)
         {
-            o = _operand2 = Rng.Pick(Registers);
+            o = _operand2 = Rng.ArrayElement(Registers);
             return this;
         }
 
         public OperationFactory Random16BitRegister(out Operand o)
         {
-            o = _operand1 = Rng.Pick(Registers16);
+            o = _operand1 = Rng.ArrayElement(Registers16);
             return this;
         }
 
         public OperationFactory Random16BitRegister2(out Operand o)
         {
-            o = _operand2 = Rng.Pick(Registers16);
+            o = _operand2 = Rng.ArrayElement(Registers16);
             return this;
         }
 
         public OperationFactory Random16BitRegisters(out Operand o1, out Operand o2)
         {
-            o1 = _operand1 = Rng.Pick(Registers16);
-            o2 = _operand2 = Rng.Pick(Registers16);
+            o1 = _operand1 = Rng.ArrayElement(Registers16);
+            o2 = _operand2 = Rng.ArrayElement(Registers16);
             return this;
         }
 
         public OperationFactory RandomRegisters(out Operand o1, out Operand o2)
         {
-            o1 = _operand1 = Rng.Pick(Registers);
-            o2 = _operand2 = Rng.Pick(Registers);
+            o1 = _operand1 = Rng.ArrayElement(Registers);
+            o2 = _operand2 = Rng.ArrayElement(Registers);
             return this;
         }
 
@@ -125,7 +127,7 @@ namespace Retro.Net.Tests.Z80.Decode
         public OperationFactory RandomLiterals()
         {
             _byteLiteral = Rng.Byte();
-            _wordLiteral = Rng.Word();
+            _wordLiteral = Rng.UShort();
             _displacement = Rng.SByte();
             return this;
         }

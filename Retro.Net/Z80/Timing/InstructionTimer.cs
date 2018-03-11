@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using Retro.Net.Timing;
 using Retro.Net.Z80.Config;
+using Retro.Net.Z80.Core.Interfaces;
 
 namespace Retro.Net.Z80.Timing
 {
@@ -24,6 +27,8 @@ namespace Retro.Net.Z80.Timing
 
         private bool _isHalted;
 
+        private readonly ISubject<InstructionTimings> _subject;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="InstructionTimer"/> class.
         /// </summary>
@@ -45,7 +50,12 @@ namespace Retro.Net.Z80.Timing
             }
 
             _timer = new HighPrecisionTimer();
+
+            _subject = new Subject<InstructionTimings>();
+            Timing = _subject.AsObservable();
         }
+
+        public IObservable<InstructionTimings> Timing { get; }
 
         /// <summary>
         /// Uses the configured instruction timings to sync real time to the CPU.
@@ -57,7 +67,7 @@ namespace Retro.Net.Z80.Timing
             _cyclesSinceLastEventSync += timings.MachineCycles;
             if (_cyclesSinceLastEventSync > CyclesPerSyncEvent)
             {
-                TimingSync?.Invoke(new InstructionTimings(_cyclesSinceLastEventSync));
+                _subject.OnNext(new InstructionTimings(_cyclesSinceLastEventSync));
                 _timer.Block((long)(_ticksPerCycle * _cyclesSinceLastEventSync));
                 _cyclesSinceLastEventSync = _cyclesSinceLastEventSync - CyclesPerSyncEvent;
             }
@@ -71,7 +81,7 @@ namespace Retro.Net.Z80.Timing
         public async Task DelayAsync(InstructionTimings timings)
         {
             var blockFor = (long)_ticksPerCycle * timings.MachineCycles;
-            await Task.Delay(new TimeSpan(blockFor)).ConfigureAwait(false);
+            await Task.Delay(new TimeSpan(blockFor));
         }
 
         /// <summary>
@@ -88,11 +98,10 @@ namespace Retro.Net.Z80.Timing
                          while (_isHalted)
                          {
                              // Don't use the HPT here as it uses too much CPU.
-                             await Task.Delay(new TimeSpan(blockFor)).ConfigureAwait(false);
-                             TimingSync?.Invoke(new InstructionTimings(CyclesPerSyncEvent));
+                             await Task.Delay(new TimeSpan(blockFor));
+                             _subject.OnNext(new InstructionTimings(CyclesPerSyncEvent));
                          }
                      });
-
         }
 
         /// <summary>
@@ -100,11 +109,6 @@ namespace Retro.Net.Z80.Timing
         /// I.e. we'll need to stop generating fake timing sync events.
         /// </summary>
         public void NotifyResume() => _isHalted = false;
-
-        /// <summary>
-        /// Occurs when [timing synchronize].
-        /// </summary>
-        public event Action<InstructionTimings> TimingSync;
         
     }
 }

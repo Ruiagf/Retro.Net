@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Moq;
 using Retro.Net.Z80.Registers;
-using Shouldly;
+using FluentAssertions;
 
 namespace Retro.Net.Tests.Z80
 {
@@ -29,11 +29,11 @@ namespace Retro.Net.Tests.Z80
             var flag = getLambda.Compile()(flags.Object);
             if (value.Value)
             {
-                flag.ShouldBeTrue(getLambda.ToString());
+                flag.Should().BeTrue(getLambda.ToString());
                 return;
             }
 
-            flag.ShouldBeFalse(getLambda.ToString());
+            flag.Should().BeFalse(getLambda.ToString());
         }
 
         public static MemberExpression GetPropertyExpression<TSource, TProperty>(Expression instance,

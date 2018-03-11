@@ -1,7 +1,8 @@
-﻿using Retro.Net.Tests.Util;
+﻿using AutoFixture;
+using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Registers;
 using Retro.Net.Z80.State;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Registers
@@ -17,7 +18,7 @@ namespace Retro.Net.Tests.Z80.Registers
         {
             Subject.B = ExpectedHigh;
             Subject.C = ExpectedLow;
-            Subject.BC.ShouldBe(Expected16);
+            Subject.BC.Should().Be(Expected16);
         }
 
         [Fact]
@@ -25,7 +26,7 @@ namespace Retro.Net.Tests.Z80.Registers
         {
             Subject.D = ExpectedHigh;
             Subject.E = ExpectedLow;
-            Subject.DE.ShouldBe(Expected16);
+            Subject.DE.Should().Be(Expected16);
         }
 
         [Fact]
@@ -33,31 +34,31 @@ namespace Retro.Net.Tests.Z80.Registers
         {
             Subject.H = ExpectedHigh;
             Subject.L = ExpectedLow;
-            Subject.HL.ShouldBe(Expected16);
+            Subject.HL.Should().Be(Expected16);
         }
 
         [Fact]
         public void When_setting_16bit_BC()
         {
             Subject.BC = Expected16;
-            Subject.B.ShouldBe(ExpectedHigh);
-            Subject.C.ShouldBe(ExpectedLow);
+            Subject.B.Should().Be(ExpectedHigh);
+            Subject.C.Should().Be(ExpectedLow);
         }
 
         [Fact]
         public void When_setting_16bit_DE()
         {
             Subject.DE = Expected16;
-            Subject.D.ShouldBe(ExpectedHigh);
-            Subject.E.ShouldBe(ExpectedLow);
+            Subject.D.Should().Be(ExpectedHigh);
+            Subject.E.Should().Be(ExpectedLow);
         }
 
         [Fact]
         public void When_setting_16bit_HL()
         {
             Subject.HL = Expected16;
-            Subject.H.ShouldBe(ExpectedHigh);
-            Subject.L.ShouldBe(ExpectedLow);
+            Subject.H.Should().Be(ExpectedHigh);
+            Subject.L.Should().Be(ExpectedLow);
         }
 
         [Fact]
@@ -73,26 +74,26 @@ namespace Retro.Net.Tests.Z80.Registers
             Subject.L = l;
 
             var state = Subject.GetRegisterState();
-            state.B.ShouldBe(b);
-            state.C.ShouldBe(c);
-            state.D.ShouldBe(d);
-            state.E.ShouldBe(e);
-            state.H.ShouldBe(h);
-            state.L.ShouldBe(l);
+            state.B.Should().Be(b);
+            state.C.Should().Be(c);
+            state.D.Should().Be(d);
+            state.E.Should().Be(e);
+            state.H.Should().Be(h);
+            state.L.Should().Be(l);
         }
 
         [Fact]
         public void When_setting_register_state()
         {
-            var state = RngFactory.Build<GeneralPurposeRegisterState>()();
+            var state = new Fixture().Create<GeneralPurposeRegisterState>();
             Subject.ResetToState(state);
 
-            Subject.B.ShouldBe(state.B);
-            Subject.C.ShouldBe(state.C);
-            Subject.D.ShouldBe(state.D);
-            Subject.E.ShouldBe(state.E);
-            Subject.H.ShouldBe(state.H);
-            Subject.L.ShouldBe(state.L);
+            Subject.B.Should().Be(state.B);
+            Subject.C.Should().Be(state.C);
+            Subject.D.Should().Be(state.D);
+            Subject.E.Should().Be(state.E);
+            Subject.H.Should().Be(state.H);
+            Subject.L.Should().Be(state.L);
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 using Retro.Net.Z80.OpCodes;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80
@@ -13,7 +13,7 @@ namespace Retro.Net.Tests.Z80
             var opCodes = Enum.GetValues(typeof(TOpCode)).Cast<byte>().OrderBy(x => x).ToArray();
             var allBytes = Enumerable.Range(0, 0x100).Select(x => (byte)x).ToArray();
 
-            opCodes.ShouldBe(allBytes);
+            opCodes.Should().BeEquivalentTo(allBytes);
         }
 
         [Fact] public void All_prefix_CB_opcodes() => AssertOpCodes<PrefixCbOpCode>();

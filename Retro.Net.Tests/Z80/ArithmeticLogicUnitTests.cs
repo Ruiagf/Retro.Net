@@ -4,7 +4,7 @@ using Moq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core;
 using Retro.Net.Z80.Registers;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80
@@ -15,8 +15,8 @@ namespace Retro.Net.Tests.Z80
 
         public ArithmeticLogicUnitTests()
         {
-            _flags = The<IFlagsRegister>().SetupAllProperties();
-            var registers = The<IRegisters>();
+            _flags = Mock<IFlagsRegister>().SetupAllProperties();
+            var registers = Mock<IRegisters>();
             registers.Setup(x => x.AccumulatorAndFlagsRegisters).Returns(new AccumulatorAndFlagsRegisterSet(_flags.Object));
         }
 
@@ -28,7 +28,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.Increment(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(result, null, null, halfCarry, overflow, false, null);
         }
@@ -41,7 +41,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.Decrement(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(result, null, null, halfCarry, overflow, true, null);
         }
@@ -87,7 +87,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.Add(a, b);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(result, null, null, halfCarry, overflow, false, carry);
         }
@@ -134,7 +134,7 @@ namespace Retro.Net.Tests.Z80
             _flags.SetupProperty(x => x.Carry, true);
 
             var result = Subject.AddWithCarry(a, b);
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(result, null, null, halfCarry, overflow, false, carry);
         }
@@ -179,7 +179,7 @@ namespace Retro.Net.Tests.Z80
         public void Subtract(byte a, byte b, byte expected, bool halfCarry, bool carry, bool overflow)
         {
             var result = Subject.Subtract(a, b);
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(result, null, null, halfCarry, overflow, true, carry);
         }
@@ -226,7 +226,7 @@ namespace Retro.Net.Tests.Z80
             _flags.SetupProperty(x => x.Carry, true);
 
             var result = Subject.SubtractWithCarry(a, b);
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(result, null, null, halfCarry, overflow, true, carry);
         }
@@ -280,7 +280,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.And(a, b);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
             _flags.Verify(x => x.SetParityFlags(expected), Times.Once);
             _flags.VerifySet(x => x.HalfCarry = true, Times.Once);
             _flags.VerifySet(x => x.Carry = false, Times.Once);
@@ -292,7 +292,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.Or(a, b);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
             _flags.Verify(x => x.SetParityFlags(expected), Times.Once);
             _flags.VerifySet(x => x.HalfCarry = false, Times.Once);
             _flags.VerifySet(x => x.Carry = false, Times.Once);
@@ -304,7 +304,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.Xor(a, b);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
             _flags.Verify(x => x.SetParityFlags(expected), Times.Once);
             _flags.VerifySet(x => x.HalfCarry = false, Times.Once);
             _flags.VerifySet(x => x.Carry = false, Times.Once);
@@ -318,7 +318,7 @@ namespace Retro.Net.Tests.Z80
             var result = Subject.Add(a, b);
             var daa = Subject.DecimalAdjust(result, true);
 
-            daa.ShouldBe(expected);
+            daa.Should().Be(expected);
             _flags.Verify(x => x.SetResultFlags(expected), Times.AtLeastOnce);
         }
 
@@ -330,7 +330,7 @@ namespace Retro.Net.Tests.Z80
             var result = Subject.Subtract(a, b);
             var daa = Subject.DecimalAdjust(result, true);
 
-            daa.ShouldBe(expected);
+            daa.Should().Be(expected);
             _flags.Verify(x => x.SetResultFlags(expected), Times.AtLeastOnce);
         }
 
@@ -343,7 +343,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.Add(a, b);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, halfCarry, null, false, carry);
         }
@@ -359,7 +359,7 @@ namespace Retro.Net.Tests.Z80
 
             var result = Subject.AddWithCarry(a, b);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, halfCarry, overflow, false, carry);
             _flags.Verify(x => x.SetResultFlags(result), Times.Once);
@@ -376,7 +376,7 @@ namespace Retro.Net.Tests.Z80
 
             var result = Subject.SubtractWithCarry(a, b);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, halfCarry, overflow, true, carry);
             _flags.Verify(x => x.SetResultFlags(result), Times.Once);
@@ -389,7 +389,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.RotateLeftWithCarry(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, false, expectedCarry);
 
@@ -407,7 +407,7 @@ namespace Retro.Net.Tests.Z80
 
             var result = Subject.RotateLeft(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, false, expectedCarry);
 
@@ -421,7 +421,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.RotateRightWithCarry(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, false, expectedCarry);
 
@@ -439,7 +439,7 @@ namespace Retro.Net.Tests.Z80
 
             var result = Subject.RotateRight(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, false, expectedCarry);
 
@@ -453,7 +453,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.ShiftLeft(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, null, expectedCarry);
 
@@ -467,7 +467,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.ShiftLeftSet(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, null, expectedCarry);
 
@@ -481,7 +481,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.ShiftRight(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, null, expectedCarry);
 
@@ -495,7 +495,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.ShiftRightLogical(a);
 
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, null, expectedCarry);
 
@@ -508,8 +508,8 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.RotateLeftDigit(accumulator, b);
 
-            result.Accumulator.ShouldBe(expectedAccumulator);
-            result.Result.ShouldBe(expected);
+            result.Accumulator.Should().Be(expectedAccumulator);
+            result.Result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, null, null);
 
@@ -522,8 +522,8 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.RotateRightDigit(accumulator, b);
 
-            result.Accumulator.ShouldBe(expectedAccumulator);
-            result.Result.ShouldBe(expected);
+            result.Accumulator.Should().Be(expectedAccumulator);
+            result.Result.Should().Be(expected);
 
             AssertFlags(null, null, null, false, null, null, null);
 
@@ -538,7 +538,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.BitReset(0xff, i);
             var expected = (byte) ((1 << i) ^ 0xff);
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
         }
 
         [Theory]
@@ -547,7 +547,7 @@ namespace Retro.Net.Tests.Z80
         {
             var result = Subject.BitSet(0x00, i);
             var expected = (byte)(1 << i);
-            result.ShouldBe(expected);
+            result.Should().Be(expected);
         }
 
         [Theory]

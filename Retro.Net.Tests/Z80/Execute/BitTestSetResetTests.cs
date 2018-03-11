@@ -2,7 +2,7 @@
 using System.Linq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -28,7 +28,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(OpCode.BitSet).Operands(o).ByteLiteral(bit);
                 fixture.With(c => c.Alu.Setup(x => x.BitSet(c.Operand8(o), bit)).Returns(c.Byte).Verifiable());
-                fixture.Assert(c => c.Operand8(o).ShouldBe(c.Byte));
+                fixture.Assert(c => c.Operand8(o).Should().Be(c.Byte));
             }
         }
 
@@ -40,7 +40,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(OpCode.BitReset).Operands(o).ByteLiteral(bit);
                 fixture.With(c => c.Alu.Setup(x => x.BitReset(c.Operand8(o), bit)).Returns(c.Byte).Verifiable());
-                fixture.Assert(c => c.Operand8(o).ShouldBe(c.Byte));
+                fixture.Assert(c => c.Operand8(o).Should().Be(c.Byte));
             }
         }
 

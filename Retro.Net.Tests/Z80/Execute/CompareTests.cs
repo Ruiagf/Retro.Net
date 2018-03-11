@@ -1,13 +1,16 @@
-﻿using Moq;
+﻿using Bogus;
+using Moq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
 {
     public class CompareTests
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         [Fact] public void SearchDecrement() => Test(OpCode.SearchDecrement, true);
 
         [Fact] public void SearchIncrement() => Test(OpCode.SearchIncrement, false);
@@ -23,15 +26,15 @@ namespace Retro.Net.Tests.Z80.Execute
                 fixture.Operation.OpCode(op);
                 fixture.With(c => c.Mmu.Setup(x => x.ReadByte(c.Registers.HL)).Returns(c.Byte).Verifiable());
                 fixture.Assert(c => c.Alu.Verify(x => x.Compare(c.Accumulator.A, c.Byte)),
-                    c => c.Registers.BC.ShouldBe(unchecked((ushort) (c.InitialRegister16(Operand.BC) - 1))));
+                    c => c.Registers.BC.Should().Be(unchecked((ushort) (c.InitialRegister16(Operand.BC) - 1))));
 
                 if (decrement)
                 {
-                    fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort) (c.InitialRegister16(Operand.HL) - 1))));
+                    fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort) (c.InitialRegister16(Operand.HL) - 1))));
                 }
                 else
                 {
-                    fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort) (c.InitialRegister16(Operand.HL) + 1))));
+                    fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort) (c.InitialRegister16(Operand.HL) + 1))));
                 }
             }
         }
@@ -41,7 +44,7 @@ namespace Retro.Net.Tests.Z80.Execute
             using (var fixture = new ExecuteFixture())
             {
                 const ushort HL = 100; // Change HL so we don't need to worry about overflow.
-                var repeats = Rng.Word(2, 10);
+                var repeats = Rng.UShort(2, 10);
                 fixture.Operation.OpCode(op);
                 fixture.With(c => c.Registers.BC = repeats, c => c.Registers.HL = HL);
                 fixture.RuntimeTiming((repeats - 1) * 5, (repeats - 1) * 21);
@@ -58,7 +61,7 @@ namespace Retro.Net.Tests.Z80.Execute
                 }
 
                 fixture.Assert(c => c.Alu.Verify(x => x.Compare(c.Accumulator.A, It.Is<byte>(b => b < repeats))));
-                fixture.Assert(c => c.Registers.BC.ShouldBe((ushort) 0));
+                fixture.Assert(c => c.Registers.BC.Should().Be((ushort) 0));
             }
         }
     }

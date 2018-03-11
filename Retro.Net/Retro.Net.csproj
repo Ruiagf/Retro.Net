@@ -11,8 +11,7 @@
   <ItemGroup>
     <PackageReference Include="AgileObjects.ReadableExpressions" Version="1.11.0" />
     <PackageReference Include="Autofac" Version="4.6.2" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
-    <PackageReference Include="System.Dynamic.Runtime" Version="4.3.0" />
+    <PackageReference Include="System.Reactive.Linq" Version="3.1.1" />
   </ItemGroup>
 
 </Project>

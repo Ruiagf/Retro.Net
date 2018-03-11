@@ -1,6 +1,7 @@
 using GameBoy.Net.Devices;
 using GameBoy.Net.Registers.Interfaces;
 using Retro.Net.Z80.Core;
+using Retro.Net.Z80.Core.Interfaces;
 
 namespace GameBoy.Net.Registers
 {
@@ -25,18 +26,18 @@ namespace GameBoy.Net.Registers
 
         private readonly IInterruptEnableRegister _interruptEnableRegister;
 
-        private readonly IInterruptManager _interruptManager;
+        private readonly IInterruptService _interruptService;
 
         private InterruptFlag _interruptFlag;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InterruptFlagsRegister"/> class.
         /// </summary>
-        /// <param name="interruptManager">The interrupt manager.</param>
+        /// <param name="interruptService">The interrupt manager.</param>
         /// <param name="interruptEnableRegister">The interrupt enable register.</param>
-        public InterruptFlagsRegister(IInterruptManager interruptManager, IInterruptEnableRegister interruptEnableRegister)
+        public InterruptFlagsRegister(IInterruptService interruptService, IInterruptEnableRegister interruptEnableRegister)
         {
-            _interruptManager = interruptManager;
+            _interruptService = interruptService;
             _interruptEnableRegister = interruptEnableRegister;
             _interruptFlag = InterruptFlag.None;
         }
@@ -104,7 +105,7 @@ namespace GameBoy.Net.Registers
                 return;
             }
 
-            if (!_interruptManager.InterruptsEnabled)
+            if (!_interruptService.InterruptsEnabled)
             {
                 // Interrupts disabled.
                 return;
@@ -157,7 +158,7 @@ namespace GameBoy.Net.Registers
             }
 
             // Do interrupt.
-            _interruptManager.Interrupt(address);
+            _interruptService.Interrupt(address);
 
             // Clear the interrupt flag.
             _interruptFlag &= ~interrupt;

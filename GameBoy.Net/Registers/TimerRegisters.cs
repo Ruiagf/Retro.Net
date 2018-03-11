@@ -1,6 +1,9 @@
-﻿using GameBoy.Net.Devices;
+﻿using System;
+using System.Reactive.Linq;
+using GameBoy.Net.Devices;
 using GameBoy.Net.Registers.Interfaces;
 using Retro.Net.Timing;
+using Retro.Net.Z80.Core.Interfaces;
 
 namespace GameBoy.Net.Registers
 {
@@ -10,7 +13,7 @@ namespace GameBoy.Net.Registers
     public class TimerRegisters : ITimerRegisters
     {
         private readonly IInterruptFlagsRegister _interruptFlagsRegister;
-
+        private readonly IDisposable _subscription;
         private int _cyclesSinceLastIncrement;
 
         /// <summary>
@@ -25,30 +28,27 @@ namespace GameBoy.Net.Registers
             _interruptFlagsRegister = interruptFlagsRegister;
             TimerModuloRegister = new SimpleRegister(0xff06, "Timer Modulo (TMA R/W)");
             TimerCounterRegister = new SimpleRegister(0xff05, "Timer counter (TIMA R/W)");
-            instructionTimer.TimingSync += timings =>
-                                           {
-                                               if (!TimerControlRegister.TimerEnabled)
-                                               {
-                                                   return;
-                                               }
+            _subscription = instructionTimer.Timing.Where(t => TimerControlRegister.TimerEnabled).Subscribe(Sync);
+        }
 
-                                               _cyclesSinceLastIncrement += timings.MachineCycles;
-                                               if (_cyclesSinceLastIncrement > TimerControlRegister.TimerFrequency)
-                                               {
-                                                   if (TimerCounterRegister.Register == 0xff)
-                                                   {
-                                                       // Overflow.
-                                                       TimerCounterRegister.Register = TimerModuloRegister.Register;
-                                                       _interruptFlagsRegister.UpdateInterrupts(InterruptFlag.TimerOverflow);
-                                                   }
-                                                   else
-                                                   {
-                                                       TimerCounterRegister.Register++;
-                                                   }
-                                               }
+        private void Sync(InstructionTimings timings)
+        {
+            _cyclesSinceLastIncrement += timings.MachineCycles;
+            if (_cyclesSinceLastIncrement > TimerControlRegister.TimerFrequency)
+            {
+                if (TimerCounterRegister.Register == 0xff)
+                {
+                    // Overflow.
+                    TimerCounterRegister.Register = TimerModuloRegister.Register;
+                    _interruptFlagsRegister.UpdateInterrupts(InterruptFlag.TimerOverflow);
+                }
+                else
+                {
+                    TimerCounterRegister.Register++;
+                }
+            }
 
-                                               _cyclesSinceLastIncrement -= TimerControlRegister.TimerFrequency;
-                                           };
+            _cyclesSinceLastIncrement -= TimerControlRegister.TimerFrequency;
         }
 
         /// <summary>
@@ -74,5 +74,11 @@ namespace GameBoy.Net.Registers
         /// The timer counter register.
         /// </value>
         public IRegister TimerCounterRegister { get; }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        public void Dispose() => _subscription.Dispose();
+
     }
 }

@@ -1,6 +1,9 @@
 ﻿using System;
 using Retro.Net.Memory;
+using Retro.Net.Memory.Interfaces;
 using Retro.Net.Timing;
+using Retro.Net.Z80.Core.Decode;
+using Retro.Net.Z80.Core.Interfaces;
 using Retro.Net.Z80.Peripherals;
 using Retro.Net.Z80.Registers;
 
@@ -18,9 +21,9 @@ namespace Retro.Net.Z80.Core
         /// Static instruction timings, known at compile time
         /// </summary>
         private readonly InstructionTimings _staticTimings;
-        
+
         /// <summary>
-        /// Initializes a new instance of the <see cref="InstructionBlock"/> class.
+        /// Initializes a new instance of the <see cref="InstructionBlock" /> class.
         /// </summary>
         /// <param name="address">The address.</param>
         /// <param name="length">The length.</param>
@@ -28,14 +31,16 @@ namespace Retro.Net.Z80.Core
         /// <param name="staticTimings">The static timings.</param>
         /// <param name="halt">if set to <c>true</c> [halt].</param>
         /// <param name="stop">if set to <c>true</c> [stop].</param>
+        /// <param name="rawBlock">The raw block.</param>
         /// <param name="debugInfo">The debug information.</param>
         public InstructionBlock(ushort address,
-            int length,
-            Func<IRegisters, IMmu, IAlu, IPeripheralManager, InstructionTimings> action,
-            InstructionTimings staticTimings,
-            bool halt,
-            bool stop,
-            string debugInfo = null)
+                                int length,
+                                Func<IRegisters, IMmu, IAlu, IPeripheralManager, InstructionTimings> action,
+                                InstructionTimings staticTimings,
+                                bool halt,
+                                bool stop,
+                                DecodedBlock rawBlock = null,
+                                string debugInfo = null)
         {
             _action = action;
             _staticTimings = staticTimings;
@@ -43,6 +48,7 @@ namespace Retro.Net.Z80.Core
             Length = length;
             HaltCpu = halt || stop;
             HaltPeripherals = stop;
+            RawBlock = rawBlock;
             DebugInfo = debugInfo;
         }
 
@@ -86,6 +92,14 @@ namespace Retro.Net.Z80.Core
         /// The debug information.
         /// </value>
         public string DebugInfo { get; }
+
+        /// <summary>
+        /// Gets the raw block.
+        /// </summary>
+        /// <value>
+        /// The raw block.
+        /// </value>
+        public DecodedBlock RawBlock { get; }
 
         /// <summary>
         /// Executes the instruction block.

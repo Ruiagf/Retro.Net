@@ -1,21 +1,26 @@
 using System;
 using System.Linq.Expressions;
 using Autofac.Extras.Moq;
+using Bogus;
 using Moq;
 using Retro.Net.Memory;
+using Retro.Net.Memory.Interfaces;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core;
 using Retro.Net.Z80.Core.Decode;
+using Retro.Net.Z80.Core.Interfaces;
 using Retro.Net.Z80.Peripherals;
 using Retro.Net.Z80.Registers;
 using Retro.Net.Z80.State;
 using Retro.Net.Z80.Util;
-using Shouldly;
+using FluentAssertions;
 
 namespace Retro.Net.Tests.Z80.Execute
 {
     public class ExecutionContext
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         private readonly ushort _IX, _IY;
 
         public ExecutionContext(AutoMock mock, Operation operation, int blockLength, GeneralPurposeRegisterState initialRegisters, AccumulatorAndFlagsRegisterState initialAccumulator)
@@ -41,16 +46,16 @@ namespace Retro.Net.Tests.Z80.Execute
 
             MockRegisters = mock.Mock<IRegisters>();
             MockRegisters.SetupAllProperties();
-            MockRegisters.Object.IX = _IX = Rng.Word();
-            MockRegisters.Object.IY = _IY = Rng.Word();
+            MockRegisters.Object.IX = _IX = Rng.UShort();
+            MockRegisters.Object.IY = _IY = Rng.UShort();
             MockRegisters.Object.IXl = Rng.Byte();
             MockRegisters.Object.IXh = Rng.Byte();
             MockRegisters.Object.IYl = Rng.Byte();
             MockRegisters.Object.IYh = Rng.Byte();
             MockRegisters.Object.I = Rng.Byte();
             MockRegisters.Object.R = Rng.Byte();
-            MockRegisters.Object.StackPointer = InitialStackPointer = Rng.Word();
-            MockRegisters.Object.ProgramCounter = InitialProgramCounter = Rng.Word();
+            MockRegisters.Object.StackPointer = InitialStackPointer = Rng.UShort();
+            MockRegisters.Object.ProgramCounter = InitialProgramCounter = Rng.UShort();
             MockRegisters.Setup(x => x.GeneralPurposeRegisters).Returns(registers);
             MockRegisters.Setup(x => x.AccumulatorAndFlagsRegisters).Returns(accumulator);
             
@@ -97,7 +102,7 @@ namespace Retro.Net.Tests.Z80.Execute
         
         public byte Byte { get; } = Rng.Byte();
 
-        public ushort Word { get; } = Rng.Word();
+        public ushort Word { get; } = Rng.UShort();
 
         public byte InitialRegister8(Operand r)
         {
@@ -239,7 +244,7 @@ namespace Retro.Net.Tests.Z80.Execute
             var setLambda = Expression.Lambda<Action<IFlagsRegister>>(setExpression, flagsExpression);
 
             Flags.VerifySet(setLambda.Compile(), Times.AtLeastOnce);
-            getLambda.Compile()(Flags.Object).ShouldBe(value.Value);
+            getLambda.Compile()(Flags.Object).Should().Be(value.Value);
         }
 
         public Expression<Func<IAlu, byte>> Alu8Call(LambdaExpression f, Operand o1, Operand? o2 = null) => GetAluExpression<Func<IAlu, byte>>(f, o1, o2);

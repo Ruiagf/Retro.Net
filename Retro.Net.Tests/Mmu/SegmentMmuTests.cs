@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Moq;
 using Retro.Net.Memory;
+using Retro.Net.Memory.Interfaces;
 using Retro.Net.Tests.Util;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Mmu
@@ -70,9 +70,11 @@ namespace Retro.Net.Tests.Mmu
                 }
             }
 
-            segment.Setup(x => x.WriteByte(It.IsAny<ushort>(), It.IsAny<byte>())).Callback((ushort a, byte v) => AddressWriteCallback(a));
-            segment.Setup(x => x.WriteWord(It.IsAny<ushort>(), It.IsAny<ushort>())).Callback((ushort a, ushort v) => AddressWriteCallback((ushort)(a + 1)));
-            segment.Setup(x => x.WriteBytes(It.IsAny<ushort>(), It.IsAny<byte[]>())).Callback((ushort a, byte[] v) => AddressWriteCallback((ushort)(a + v.Length - 1)));
+            segment.Setup(x => x.WriteByte(It.IsAny<ushort>(), It.IsAny<byte>()))
+                   .Callback((ushort a, byte v) => AddressWriteCallback(a));
+
+            segment.Setup(x => x.WriteBytes(It.IsAny<ushort>(), It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>()))
+                   .Returns((ushort a, byte[] v, int o, int l) => Math.Min(l, length - a));
         }
 
         private static void SetupReadableSegment<TSegment>(Mock<TSegment> segment)
@@ -90,8 +92,9 @@ namespace Retro.Net.Tests.Mmu
             }
 
             segment.Setup(x => x.ReadByte(It.IsAny<ushort>())).Returns((ushort a) => AddressReadCallback(a, (byte)0x00));
-            segment.Setup(x => x.ReadWord(It.IsAny<ushort>())).Returns((ushort a) => AddressReadCallback((ushort)(a + 1), (ushort)0x0000));
-            segment.Setup(x => x.ReadBytes(It.IsAny<ushort>(), It.IsAny<int>())).Returns((ushort a, int l) => AddressReadCallback((ushort)(a + l - 1), new byte[l]));
+
+            segment.Setup(x => x.ReadBytes(It.IsAny<ushort>(), It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>()))
+                   .Returns((ushort a, byte[] v, int o, int l) => Math.Min(l, length - a));
         }
     }
 
@@ -105,17 +108,15 @@ namespace Retro.Net.Tests.Mmu
             where TReadableSegment : class, IReadableAddressSegment
             where TWriteableSegment : class, IWriteableAddressSegment
         {
-            readSegment.Object.Address.ShouldBe(writeSegment.Object.Address);
+            readSegment.Object.Address.Should().Be(writeSegment.Object.Address);
 
             var segmentAddress = (ushort) (address - readSegment.Object.Address);
             var value = Rng.Byte();
             Subject.WriteByte(address, value);
             Subject.ReadByte(address);
 
-            Subject.ShouldSatisfyAllConditions(
-                () => readSegment.Verify(x => x.ReadByte(segmentAddress)),
-                () => writeSegment.Verify(x => x.WriteByte(segmentAddress, value))
-            );
+            readSegment.Verify(x => x.ReadByte(segmentAddress));
+            writeSegment.Verify(x => x.WriteByte(segmentAddress, value));
         }
         
         [Fact] public void When_constructing() => ConstructionShouldNotThrow();
@@ -131,38 +132,21 @@ namespace Retro.Net.Tests.Mmu
         [Fact] public void When_reading_and_writing_first_byte_of_segment_2() => WhenReadingAndWritingByte(Segment2Config.address, Segment2, Segment2);
 
         [Fact] public void When_reading_and_writing_last_byte_of_segment_2() => WhenReadingAndWritingByte(0xffff, Segment2, Segment2);
-
-        [Fact]
-        public void When_reading_and_writing_loads_of_bytes()
-        {
-            var bytes = Rng.Bytes(0x10000);
-            Subject.WriteBytes(0, bytes);
-            Subject.ReadBytes(0, 0x10000);
-
-            Subject.ShouldSatisfyAllConditions(
-                () => Segment0.Verify(x => x.ReadBytes(0, Segment0Config.length)),
-                () => Segment0.Verify(x => x.WriteBytes(0, It.Is<byte[]>(b => b.SequenceEqual(bytes.Take(Segment0Config.length))))),
-                () => SegmentReadable1.Verify(x => x.ReadBytes(0, Segment1Config.length)),
-                () => SegmentWriteable1.Verify(x => x.WriteBytes(0, It.Is<byte[]>(b => b.SequenceEqual(bytes.Skip(Segment0Config.length).Take(Segment1Config.length))))),
-                () => Segment2.Verify(x => x.ReadBytes(0, Segment2Config.length)),
-                () => Segment2.Verify(x => x.WriteBytes(0, It.Is<byte[]>(b => b.SequenceEqual(bytes.Skip(Segment0Config.length + Segment1Config.length).Take(Segment2Config.length)))))
-            );
-        }
-
+        
         [Fact]
         public void When_reading_and_writing_word()
         {
             var address = (ushort) (Segment1Config.address - 1);
-            var value = Rng.Word();
+            var value = Rng.UShort();
             Subject.WriteWord(address, value);
             Subject.ReadWord(address);
 
-            Subject.ShouldSatisfyAllConditions(
-                () => Segment0.Verify(x => x.ReadByte(address)),
-                () => SegmentReadable1.Verify(x => x.ReadByte(0)),
-                () => Segment0.Verify(x => x.WriteByte(address, (byte)(value & 0xff))),
-                () => SegmentWriteable1.Verify(x => x.WriteByte(0, (byte)((value & 0xff00) >> 8)))
-            );
+            var bytes = BitConverter.GetBytes(value);
+
+            Segment0.Verify(x => x.WriteBytes(address, It.Is<byte[]>(b => b.Take(2).SequenceEqual(bytes)), 0, 2)); // first tries writing all bytes to segment0
+            SegmentWriteable1.Verify(x => x.WriteBytes(0, It.Is<byte[]>(b => b.Take(2).SequenceEqual(bytes)), 1, 1)); // then writes last byte to segment1
+            Segment0.Verify(x => x.ReadBytes(address, It.IsAny<byte[]>(), 0, 2)); // first tries reading all bytes from segment0
+            SegmentReadable1.Verify(x => x.ReadBytes(0, It.IsAny<byte[]>(), 1, 1)); // then reads last byte from segment1
         }
     }
 }

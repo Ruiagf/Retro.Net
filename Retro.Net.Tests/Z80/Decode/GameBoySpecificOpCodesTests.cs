@@ -1,4 +1,5 @@
-﻿using Retro.Net.Tests.Util;
+﻿using Bogus;
+using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
 using Xunit;
@@ -7,6 +8,8 @@ namespace Retro.Net.Tests.Z80.Decode
 {
     public class GameBoySpecificOpCodesTests
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         [Theory]
         [InlineData(GameBoyPrefixCbOpCode.SWAP_A, Operand.A)]
         [InlineData(GameBoyPrefixCbOpCode.SWAP_B, Operand.B)]
@@ -80,7 +83,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestWordLiteral(GameBoyPrimaryOpCode op, Operand o0, Operand o1)
         {
-            var w = Rng.Word();
+            var w = Rng.UShort();
             using (var fixture = new DecodeFixture(4, 13, op, w).OnlyGameboy())
             {
                 fixture.Expected.OpCode(OpCode.Load).Operands(o0, o1).WordLiteral(w);
@@ -89,7 +92,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestWordLiteral16(GameBoyPrimaryOpCode op, Operand o0, Operand o1)
         {
-            var w = Rng.Word();
+            var w = Rng.UShort();
             using (var fixture = new DecodeFixture(5, 16, op, w).OnlyGameboy())
             {
                 fixture.Expected.OpCode(OpCode.Load16).Operands(o0, o1).WordLiteral(w);

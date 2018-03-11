@@ -4,7 +4,7 @@ using System.Linq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Tests.Z80.Registers.Data;
 using Retro.Net.Z80.Registers;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Registers
@@ -56,25 +56,19 @@ namespace Retro.Net.Tests.Z80.Registers
             Subject.Subtract = test.Expected.Subtract;
             Subject.Carry = test.Expected.Carry;
 
-            Subject.Register.ShouldBe(test.Value);
+            Subject.Register.Should().Be(test.Value);
         }
 
         private void AssertSubject(TestDataEntry<byte, Intel8080FlagsRegister> test)
         {
-            var assertions = GetAssertions(test.Expected, Subject).ToArray();
-            Subject.ShouldSatisfyAllConditions(test.ToString(), assertions);
-        }
-
-        private static IEnumerable<Action> GetAssertions(IFlagsRegister expected, IFlagsRegister observed)
-        {
-            yield return () => observed.Sign.ShouldBe(expected.Sign);
-            yield return () => observed.Zero.ShouldBe(expected.Zero);
-            yield return () => observed.Flag5.ShouldBe(expected.Flag5);
-            yield return () => observed.HalfCarry.ShouldBe(expected.HalfCarry);
-            yield return () => observed.Flag3.ShouldBe(expected.Flag3);
-            yield return () => observed.ParityOverflow.ShouldBe(expected.ParityOverflow);
-            yield return () => observed.Subtract.ShouldBe(expected.Subtract);
-            yield return () => observed.Carry.ShouldBe(expected.Carry);
+            Subject.Sign.Should().Be(test.Expected.Sign);
+            Subject.Zero.Should().Be(test.Expected.Zero);
+            Subject.Flag5.Should().Be(test.Expected.Flag5);
+            Subject.HalfCarry.Should().Be(test.Expected.HalfCarry);
+            Subject.Flag3.Should().Be(test.Expected.Flag3);
+            Subject.ParityOverflow.Should().Be(test.Expected.ParityOverflow);
+            Subject.Subtract.Should().Be(test.Expected.Subtract);
+            Subject.Carry.Should().Be(test.Expected.Carry);
         }
     }
 }

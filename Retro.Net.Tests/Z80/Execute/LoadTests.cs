@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Bogus;
 using Moq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -13,6 +14,8 @@ namespace Retro.Net.Tests.Z80.Execute
     /// </summary>
     public class LoadTests
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         private static readonly Operand[] Writable8BitOperands =
         {
             Operand.A, Operand.B, Operand.C, Operand.D, Operand.E, Operand.F, Operand.H, Operand.L,
@@ -72,7 +75,7 @@ namespace Retro.Net.Tests.Z80.Execute
                             break;
                     }
                 });
-                fixture.Assert(c => c.Operand8(o).ShouldBe(value));
+                fixture.Assert(c => c.Operand8(o).Should().Be(value));
             }
         }
 
@@ -121,7 +124,7 @@ namespace Retro.Net.Tests.Z80.Execute
                             break;
                             
                         default:
-                            c.Operand8(c.Operation.Operand1).ShouldBe(value);
+                            c.Operand8(c.Operation.Operand1).Should().Be(value);
                             break;
                     }
                 });
@@ -136,7 +139,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(OpCode.Load16).Random16BitRegister(out var o).Operand2(r).RandomLiterals();
 
-                var value = Rng.Word();
+                var value = new Faker().Random.UShort();
                 fixture.With(c =>
                 {
                     if (r == Operand.SPd)
@@ -149,7 +152,7 @@ namespace Retro.Net.Tests.Z80.Execute
                     }
                 });
 
-                fixture.Assert(c => c.Operand16(o).ShouldBe(value));
+                fixture.Assert(c => c.Operand16(o).Should().Be(value));
             }
         }
 
@@ -160,7 +163,7 @@ namespace Retro.Net.Tests.Z80.Execute
             using (var fixture = new ExecuteFixture())
             {
                 fixture.Operation.OpCode(OpCode.Load16).Operands(r).Random16BitRegister2(out var o).RandomLiterals();
-                fixture.Assert(c => c.Operand16(r).ShouldBe(c.Operand16(o)));
+                fixture.Assert(c => c.Operand16(r).Should().Be(c.Operand16(o)));
             }
         }
 
@@ -178,16 +181,16 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(o).Operands(Operand.A, Operand.mHL);
                 fixture.With(c => c.Mmu.Setup(x => x.ReadByte(c.InitialRegisters.HL)).Returns(c.Byte).Verifiable());
-                fixture.Assert(c => c.Accumulator.A.ShouldBe(c.Byte));
+                fixture.Assert(c => c.Accumulator.A.Should().Be(c.Byte));
 
                 switch (o)
                 {
                     case OpCode.LoadIncrement:
-                        fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort)(c.InitialRegisters.HL + 1))));
+                        fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort)(c.InitialRegisters.HL + 1))));
                         break;
 
                     case OpCode.LoadDecrement:
-                        fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort)(c.InitialRegisters.HL - 1))));
+                        fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort)(c.InitialRegisters.HL - 1))));
                         break;
                 }
             }
@@ -203,11 +206,11 @@ namespace Retro.Net.Tests.Z80.Execute
                 switch (o)
                 {
                     case OpCode.LoadIncrement:
-                        fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort) (c.InitialRegisters.HL + 1))));
+                        fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort) (c.InitialRegisters.HL + 1))));
                         break;
 
                     case OpCode.LoadDecrement:
-                        fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort)(c.InitialRegisters.HL - 1))));
+                        fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort)(c.InitialRegisters.HL - 1))));
                         break;
                 }
             }

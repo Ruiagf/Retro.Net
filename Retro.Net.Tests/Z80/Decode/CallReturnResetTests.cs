@@ -1,4 +1,5 @@
-﻿using Retro.Net.Tests.Util;
+﻿using Bogus;
+using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
 using Xunit;
@@ -66,7 +67,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestCall(PrimaryOpCode op, FlagTest flagTest, int machineCycles = 3, int throttlingStates = 10, bool gameboy = true)
         {
-            var address = Rng.Word();
+            var address = new Faker().Random.UShort();
             using (var fixture = new DecodeFixture(machineCycles, throttlingStates, op, address).DoNotHalt().ThrowOnGameboy(!gameboy))
             {
                 fixture.Expected.OpCode(OpCode.Call).FlagTest(flagTest).Operands(Operand.nn).WordLiteral(address);

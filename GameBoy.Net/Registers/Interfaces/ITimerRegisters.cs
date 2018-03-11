@@ -1,9 +1,11 @@
-﻿namespace GameBoy.Net.Registers.Interfaces
+﻿using System;
+
+namespace GameBoy.Net.Registers.Interfaces
 {
     /// <summary>
     /// Timer registers.
     /// </summary>
-    public interface ITimerRegisters
+    public interface ITimerRegisters : IDisposable
     {
         /// <summary>
         /// Gets the timer control register.

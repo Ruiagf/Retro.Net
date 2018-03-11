@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Bogus;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
@@ -9,6 +10,8 @@ namespace Retro.Net.Tests.Z80.Decode
 {
     public class Load8BitTests
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         [Theory]
         [MemberData(nameof(SimpleLoadOpCodes))]
         public void LD_r_r(PrimaryOpCode op, Operand o0, Operand o1) => Test(op, o0, o1);
@@ -94,7 +97,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestLiteralIndexed(PrimaryOpCode op, Operand o0, Operand o1)
         {
-            var literal = Rng.Word();
+            var literal = Rng.UShort();
             using (var fixture = new DecodeFixture(4, 13, op, literal).NotOnGameboy())
             {
                 fixture.Expected.OpCode(OpCode.Load).Operands(o0, o1).WordLiteral(literal);

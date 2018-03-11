@@ -1,4 +1,5 @@
-﻿using Retro.Net.Tests.Util;
+﻿using Bogus;
+using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
 using Xunit;
@@ -7,6 +8,8 @@ namespace Retro.Net.Tests.Z80.Decode
 {
     public class JumpTests
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         [Fact]
         public void JP_mHL()
         {
@@ -67,7 +70,7 @@ namespace Retro.Net.Tests.Z80.Decode
         
         private static void Test(PrimaryOpCode op, FlagTest test = FlagTest.None, bool gameBoy = true)
         {
-            var literal = Rng.Word();
+            var literal = Rng.UShort();
             using (var fixture = new DecodeFixture(3, 10, op, literal).DoNotHalt())
             {
                 if (!gameBoy)

@@ -1,4 +1,6 @@
-﻿namespace Retro.Net.Z80.Core
+﻿using Retro.Net.Z80.Core.Interfaces;
+
+namespace Retro.Net.Z80.Core
 {
     /// <summary>
     /// An accumulator and result structure.
@@ -11,7 +13,7 @@
         /// </summary>
         /// <param name="accumulator">The accumulator.</param>
         /// <param name="result">The result.</param>
-        public AccumulatorAndResult(byte accumulator, byte result) : this()
+        public AccumulatorAndResult(byte accumulator, byte result)
         {
             Accumulator = accumulator;
             Result = result;

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Linq;
-using Newtonsoft.Json;
-using Retro.Net.Memory;
+using Retro.Net.Memory.Interfaces;
 using Retro.Net.Timing;
 using Retro.Net.Z80.Config;
 using Retro.Net.Z80.Peripherals;
 using Retro.Net.Z80.Registers;
 using Retro.Net.Z80.Core.Decode;
+using Retro.Net.Z80.Core.Interfaces;
 using Retro.Net.Z80.Timing;
 
 namespace Retro.Net.Z80.Core.Interpreted
@@ -46,10 +46,8 @@ namespace Retro.Net.Z80.Core.Interpreted
         /// <returns></returns>
         public IInstructionBlock Build(DecodedBlock block)
         {
-            var debugInfo = _debug ? JsonConvert.SerializeObject(new { block.Address, Operations = block.Operations.Select(x => x.ToString()) }) : null;
-
             InstructionTimings Run(IRegisters registers, IMmu mmu, IAlu alu, IPeripheralManager peripherals) => Interpret(registers, mmu, alu, peripherals, block);
-            return new InstructionBlock(block.Address, block.Length, Run, block.Timings, block.Halt, block.Stop, debugInfo);
+            return new InstructionBlock(block.Address, block.Length, Run, block.Timings, block.Halt, block.Stop, _debug ? block : null, string.Empty);
         }
 
         private InstructionTimings Interpret(IRegisters registers, IMmu mmu, IAlu alu, IPeripheralManager peripherals, DecodedBlock block)

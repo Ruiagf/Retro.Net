@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Bogus;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
@@ -56,7 +57,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void Z80IndexTest(Operand index, PrefixCbOpCode op, byte bit, Operand r, OpCode expected, int indexMachineCycles = 6, int indexthrottlingStates = 23, bool autoCopy = true)
         {
-            var displacement = Rng.SByte();
+            var displacement = new Faker().Random.SByte();
             if (autoCopy && r != Operand.mHL)
             {
                 // Autocopy has extra cycles to run LD_r_IXYd instruction (5, 19) - Prefix_NOP(1, 4) (which has already been run) = (4, 15)

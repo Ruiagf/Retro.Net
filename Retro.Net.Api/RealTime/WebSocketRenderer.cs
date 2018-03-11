@@ -10,11 +10,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
 using GameBoy.Net.Devices;
-using GameBoy.Net.Graphics;
-using LZ4;
+using GameBoy.Net.Devices.Graphics.Models;
+using GameBoy.Net.Devices.Interfaces;
+using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using Retro.Net.Api.RealTime.Interfaces;
-using Retro.Net.Api.RealTime.Models;
+using Retro.Net.Api.RealTime.Messages.Command;
+using Retro.Net.Api.RealTime.Messages.Event;
 using Retro.Net.Api.Validation;
 using Retro.Net.Util;
 
@@ -27,34 +29,30 @@ namespace Retro.Net.Api.RealTime
         private static readonly TimeSpan FrameLength = TimeSpan.FromMilliseconds(250);
         private static readonly TimeSpan ButtonPressLength = TimeSpan.FromMilliseconds(50);
 
-        private readonly ISubject<IWebSocketMessage> _metricsSubject;
-        private readonly ISubject<IWebSocketMessage> _eventsSubject;
-        private readonly ISubject<IWebSocketMessage> _frameSubject;
+        private readonly ISubject<GameBoyEvent> _eventsSubject;
+        private readonly ISubject<GameBoyEvent> _frameSubject;
         private readonly ISubject<(string name, JoyPadButton button)> _joyPadSubject;
 
-        private readonly IValidator<GameBoySocketMessage> _validator;
-        private readonly IWebSocketMessageSerializer _serializer;
+        private readonly IValidator<GameBoyCommand> _validator;
         private readonly IMessageBus _messageBus;
         private readonly IDisposable _joyPadSubscription;
         private readonly ISet<string> _displayNames;
         private readonly ILogger _logger;
-        private readonly byte[] _buffer;
+
+        private GpuMetrics _lastGpuMetrics;
 
         private int _connectedSockets;
 
-        public WebSocketRenderer(ILoggerFactory loggerFactory, IJoyPad joyPad, IMessageBus messageBus, IWebSocketMessageSerializer serializer)
+        public WebSocketRenderer(ILoggerFactory loggerFactory, IJoyPad joyPad, IMessageBus messageBus)
         {
             _messageBus = messageBus;
-            _serializer = serializer;
             _displayNames = new HashSet<string>();
             _logger = loggerFactory.CreateLogger<WebSocketRenderer>();
-            _buffer = new byte[LZ4Codec.MaximumOutputLength(Gpu.LcdWidth * Gpu.LcdHeight)];
 
-            _validator = new GameBoySocketMessageValidator(_displayNames);
+            _validator = new GameBoyCommandValidator(_displayNames);
 
-            _metricsSubject = new ReplaySubject<IWebSocketMessage>(1);
-            _eventsSubject = new ReplaySubject<IWebSocketMessage>(MaximumMessages);
-            _frameSubject = new ReplaySubject<IWebSocketMessage>(1);
+            _eventsSubject = new ReplaySubject<GameBoyEvent>(MaximumMessages);
+            _frameSubject = new ReplaySubject<GameBoyEvent>(1);
             _joyPadSubject = new Subject<(string name, JoyPadButton button)>();
 
             // Press the most requested button.
@@ -79,26 +77,24 @@ namespace Retro.Net.Api.RealTime
 
         public void Paint(Frame frame)
         {
-            var message = WebSocketMessageFactory.GpuFrame(frame.Buffer, _buffer);
+            var message = new GameBoyEvent
+                          {
+                              Frame = new GameBoyGpuFrame
+                                      {
+                                          Data = ByteString.CopyFrom(frame.Buffer), // TODO: find a way to avoid this copy.
+                                          FramesPerSecond = _lastGpuMetrics.FramesPerSecond
+                                      }
+                          };
             _frameSubject.OnNext(message);
         }
 
-        public void UpdateMetrics(GpuMetrics gpuMetrics)
-        {
-            var metrics = new GameBoyMetrics
-                          {
-                              FramesPerSecond = gpuMetrics.FramesPerSecond,
-                              SkippedFrames = gpuMetrics.SkippedFrames
-                          };
-            var message = WebSocketMessageFactory.Metrics(metrics);
-            _metricsSubject.OnNext(message);
-        }
-        
+        public void UpdateMetrics(GpuMetrics gpuMetrics) => _lastGpuMetrics = gpuMetrics;
+
         public async Task RenderToWebSocketAsync(WebSocket socket, CancellationToken token)
         {
             var id = Guid.NewGuid();
-            var state = new GameBoySocketClientState();
-
+            var state = new GameBoyClientState();
+            
             var connectedSockets = Interlocked.Increment(ref _connectedSockets);
             if (connectedSockets == 1)
             {
@@ -109,7 +105,7 @@ namespace Retro.Net.Api.RealTime
 
             try
             {
-                using (var reactiveSocket = new ReactiveWebSocket(socket, _serializer, token))
+                using (var reactiveSocket = new ReactiveWebSocket(socket, token))
                 using (var subscriptions = new CompositeDisposable())
                 {
                     var observer = reactiveSocket.AsObserver();
@@ -118,56 +114,45 @@ namespace Retro.Net.Api.RealTime
                     subscriptions.Add(_frameSubject.Subscribe(observer.OnNext));
 
                     // Listen for client messages.
-                    IDisposable metricsSubscription = null;
                     var tcs = new TaskCompletionSource<bool>();
                     var subscription = reactiveSocket
                         .Timeout(MinimumHeartbeatInterval)
                         .Subscribe(m =>
                                    {
-                                       if (m.IsHeartBeat())
-                                       {
-                                           return;
-                                       }
-
                                        var validation = _validator.Validate(m);
                                        if (!validation.IsValid)
                                        {
-                                           var error = new ErrorMessage { Reasons = validation.Errors.Select(e => e.ToString()).ToList() };
-                                           _logger.LogDebug($"[{id}] invalid message: {string.Join(", ", error.Reasons)}");
-                                           var message = WebSocketMessageFactory.Error(error);
+                                           var message = new GameBoyEvent { Error = new GameBoyServerError() };
+                                           message.Error.Reasons.AddRange(validation.Errors.Select(e => e.ToString()));
+                                           _logger.LogDebug($"[{id}] invalid message: {string.Join(", ", message.Error.Reasons)}");
                                            observer.OnNext(message);
                                            return;
                                        }
 
-                                       if (state.StateChanged(m))
+                                       switch (m.ValueCase)
                                        {
-                                           if (state.MetricsEnabledChanged(m))
-                                           {
-                                               if (m.EnableMetrics.GetValueOrDefault())
+                                           case GameBoyCommand.ValueOneofCase.None:
+                                               // Just a heartbeat to keep the connection alive.
+                                               return;
+
+                                           case GameBoyCommand.ValueOneofCase.SetState:
+                                               // Update display name.
+                                               if (!m.SetState.DisplayName.Equals(state.DisplayName, StringComparison.OrdinalIgnoreCase))
                                                {
-                                                   metricsSubscription = new CompositeDisposable(_metricsSubject.Subscribe(observer.OnNext),
-                                                                                                 _eventsSubject.Subscribe(observer.OnNext));
-                                                   subscriptions.Add(metricsSubscription);
+                                                   state.DisplayName = m.SetState.DisplayName;
+                                                   Publish(m.SetState.DisplayName, "Joined the game");
                                                }
-                                               else if (metricsSubscription != null)
-                                               {
-                                                   subscriptions.Remove(metricsSubscription);
-                                               }
-                                           }
 
-                                           if (state.DisplayNameChanged(m))
-                                           {
-                                               Publish(m.SetDisplayName, "Joined the game");
-                                           }
+                                               // Publish the new state.
+                                               observer.OnNext(new GameBoyEvent { State = state });
+                                               break;
 
-                                           state.Update(m);
-                                           var stateMessage = WebSocketMessageFactory.StateUpdate(state);
-                                           observer.OnNext(stateMessage);
-                                       }
+                                           case GameBoyCommand.ValueOneofCase.PressButton:
+                                               _joyPadSubject.OnNext((state.DisplayName, (JoyPadButton) (int) m.PressButton.Button));
+                                               break;
 
-                                       if (!string.IsNullOrEmpty(state.DisplayName) && m.Button.HasValue)
-                                       {
-                                           _joyPadSubject.OnNext((state.DisplayName, (JoyPadButton) m.Button.Value));
+                                           default:
+                                               throw new ArgumentOutOfRangeException();
                                        }
                                    }, e => tcs.SetException(e), () => tcs.SetResult(true));
                     
@@ -196,12 +181,19 @@ namespace Retro.Net.Api.RealTime
             }
         }
 
-        private void Publish(string user, string message)
+        private void Publish(string user, string messageBody)
         {
-            _logger.LogDebug(message);
-            var clientMessage = new GameBoyClientMessage {User = user, Date = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), Message = message};
-            var webSocketMessage = WebSocketMessageFactory.ClientMessage(clientMessage);
-            _eventsSubject.OnNext(webSocketMessage);
+            _logger.LogDebug(messageBody);
+            var message = new GameBoyEvent
+                          {
+                              PublishedMessage = new GameBoyPublishedMessage
+                                                 {
+                                                     Body = messageBody,
+                                                     User = user,
+                                                     Date = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                                                 }
+                          };
+            _eventsSubject.OnNext(message);
         }
         
         public void Dispose()

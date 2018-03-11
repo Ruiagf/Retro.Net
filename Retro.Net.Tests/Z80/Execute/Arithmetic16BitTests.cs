@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq.Expressions;
-using Retro.Net.Z80.Core;
 using Retro.Net.Z80.Core.Decode;
-using Shouldly;
+using Retro.Net.Z80.Core.Interfaces;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -21,7 +21,7 @@ namespace Retro.Net.Tests.Z80.Execute
             using (var fixture = new ExecuteFixture())
             {
                 fixture.Operation.OpCode(OpCode.Increment16).Random16BitRegister(out var o);
-                fixture.Assert(c => c.Operand16(o).ShouldBe(unchecked ((ushort) (c.InitialRegister16(o) + 1))));
+                fixture.Assert(c => c.Operand16(o).Should().Be(unchecked ((ushort) (c.InitialRegister16(o) + 1))));
             }
         }
 
@@ -31,7 +31,7 @@ namespace Retro.Net.Tests.Z80.Execute
             using (var fixture = new ExecuteFixture())
             {
                 fixture.Operation.OpCode(OpCode.Decrement16).Random16BitRegister(out var o);
-                fixture.Assert(c => c.Operand16(o).ShouldBe(unchecked((ushort) (c.InitialRegister16(o) - 1))));
+                fixture.Assert(c => c.Operand16(o).Should().Be(unchecked((ushort) (c.InitialRegister16(o) - 1))));
             }
         }
 
@@ -41,7 +41,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(op).Random16BitRegisters(out var o1, out var o2);
                 fixture.With(c => c.Alu.Setup(c.Alu16Call(f, o1, o2)).Returns(c.Word).Verifiable());
-                fixture.Assert(c => c.Operand16(o1).ShouldBe(c.Word));
+                fixture.Assert(c => c.Operand16(o1).Should().Be(c.Word));
             }
         }
     }

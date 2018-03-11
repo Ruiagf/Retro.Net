@@ -1,4 +1,5 @@
-﻿using Retro.Net.Tests.Util;
+﻿using Bogus;
+using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
 using Xunit;
@@ -7,6 +8,8 @@ namespace Retro.Net.Tests.Z80.Decode
 {
     public class Arithmetic8BitTests
     {
+
+
         [Theory]
         [InlineData(PrimaryOpCode.ADD_A_A, Operand.A)]
         [InlineData(PrimaryOpCode.ADD_A_B, Operand.B)]
@@ -212,7 +215,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void LiteralTest(PrimaryOpCode op, OpCode expected, int machineCycles = 2, int throttlingStates = 7)
         {
-            var literal = Rng.Byte();
+            var literal = new Faker().Random.Byte();
             using (var fixture = new DecodeFixture(machineCycles, throttlingStates, op, literal))
             {
                 fixture.Expected.OpCode(expected).Operands(Operand.n).ByteLiteral(literal);
@@ -221,7 +224,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void Z80Index(PrimaryOpCode op, Operand index, OpCode expected, int machineCycles = 5, int throttlingStates = 19)
         {
-            var displacement = Rng.SByte();
+            var displacement = new Faker().Random.SByte();
             using (var fixture = new DecodeFixture(machineCycles, throttlingStates, index.GetZ80IndexPrefix(), op, displacement).ThrowUnlessZ80())
             {
                 fixture.Expected.OpCode(expected).Operands(index).Displacement(displacement);

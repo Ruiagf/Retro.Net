@@ -21,14 +21,14 @@ namespace Retro.Net.Z80.Core.Decode
         /// <param name="wordLiteral">The word literal.</param>
         /// <param name="displacement">The displacement.</param>
         public Operation(ushort address,
-            OpCode opCode,
-            Operand operand1,
-            Operand operand2,
-            FlagTest flagTest,
-            OpCodeMeta opCodeMeta,
-            byte byteLiteral,
-            ushort wordLiteral,
-            sbyte displacement) : this()
+                         OpCode opCode,
+                         Operand operand1,
+                         Operand operand2,
+                         FlagTest flagTest,
+                         OpCodeMeta opCodeMeta,
+                         byte byteLiteral,
+                         ushort wordLiteral,
+                         sbyte displacement) : this()
         {
             Address = address;
             OpCode = opCode;

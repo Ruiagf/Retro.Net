@@ -5,7 +5,7 @@ using Moq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.Registers;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -41,7 +41,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.With(x => x.Registers.B = 2);
                 SetupRelativeJump(fixture, OpCode.DecrementJumpRelativeIfNonZero, FlagTest.None);
-                fixture.Assert(x => x.Registers.B.ShouldBe((byte) 1));
+                fixture.Assert(x => x.Registers.B.Should().Be((byte) 1));
             }
         }
 
@@ -52,7 +52,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.With(x => x.Registers.B = 1);
                 SetupRelativeJump(fixture, OpCode.DecrementJumpRelativeIfNonZero, FlagTest.None, false);
-                fixture.Assert(x => x.Registers.B.ShouldBe((byte) 0));
+                fixture.Assert(x => x.Registers.B.Should().Be((byte) 0));
             }
         }
 

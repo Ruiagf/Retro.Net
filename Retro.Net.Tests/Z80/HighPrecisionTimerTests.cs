@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using Retro.Net.Timing;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80
@@ -23,6 +23,6 @@ namespace Retro.Net.Tests.Z80
             _ticks = sw.ElapsedTicks;
         }
 
-        [Fact(Skip = "Too slow for TravisCI")] public void It_should_wait_for_approx_expected_ticks() => _ticks.ShouldBeInRange(ExpectedTicksLowerBound, ExpectedTicksUpperBound);
+        [Fact(Skip = "Too slow for TravisCI")] public void It_should_wait_for_approx_expected_ticks() => _ticks.Should().BeInRange(ExpectedTicksLowerBound, ExpectedTicksUpperBound);
     }
 }

@@ -1,7 +1,8 @@
-﻿using Moq;
+﻿using Bogus;
+using Moq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -20,17 +21,17 @@ namespace Retro.Net.Tests.Z80.Execute
                 fixture.Operation.OpCode(op);
                 fixture.With(c => c.Registers.BC = (ushort) (overflow ? 2 : 1));
                 fixture.Assert(c => c.Mmu.Verify(x => x.TransferByte(c.InitialRegisters.HL, c.InitialRegisters.DE)),
-                    c => c.Registers.BC.ShouldBe((ushort) (overflow ? 1 : 0)));
+                    c => c.Registers.BC.Should().Be((ushort) (overflow ? 1 : 0)));
 
                 if (decrement)
                 {
-                    fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort) (c.InitialRegisters.HL - 1))),
-                        c => c.Registers.DE.ShouldBe(unchecked((ushort) (c.InitialRegisters.DE - 1))));
+                    fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort) (c.InitialRegisters.HL - 1))),
+                        c => c.Registers.DE.Should().Be(unchecked((ushort) (c.InitialRegisters.DE - 1))));
                 }
                 else
                 {
-                    fixture.Assert(c => c.Registers.HL.ShouldBe(unchecked((ushort) (c.InitialRegisters.HL + 1))),
-                        c => c.Registers.DE.ShouldBe(unchecked((ushort) (c.InitialRegisters.DE + 1))));
+                    fixture.Assert(c => c.Registers.HL.Should().Be(unchecked((ushort) (c.InitialRegisters.HL + 1))),
+                        c => c.Registers.DE.Should().Be(unchecked((ushort) (c.InitialRegisters.DE + 1))));
                 }
                 
                 fixture.AssertFlags(halfCarry: false, parityOverflow: overflow, subtract: false);
@@ -42,7 +43,7 @@ namespace Retro.Net.Tests.Z80.Execute
         [InlineData(OpCode.TransferIncrementRepeat, false)]
         public void TransferRepeat(OpCode op, bool decrement)
         {
-            var repeats = Rng.Word(2, 10);
+            var repeats = new Faker().Random.UShort(2, 10);
             using (var fixture = new ExecuteFixture())
             {
                 fixture.Operation.OpCode(op);
@@ -54,18 +55,18 @@ namespace Retro.Net.Tests.Z80.Execute
                 {
                     fixture.Assert(c => c.Mmu.Verify(x => x.TransferByte(It.Is<ushort>(b => b > HL - repeats && b <= HL),
                         It.Is<ushort>(b => b > DE - repeats && b <= DE)), Times.Exactly(repeats)));
-                    fixture.Assert(c => c.Registers.HL.ShouldBe((ushort) (HL - repeats)),
-                        c => c.Registers.DE.ShouldBe((ushort) (DE - repeats)));
+                    fixture.Assert(c => c.Registers.HL.Should().Be((ushort) (HL - repeats)),
+                        c => c.Registers.DE.Should().Be((ushort) (DE - repeats)));
                 }
                 else
                 {
                     fixture.Assert(c => c.Mmu.Verify(x => x.TransferByte(It.Is<ushort>(b => b >= HL && b < HL + repeats),
                         It.Is<ushort>(b => b >= DE && b < DE + repeats)), Times.Exactly(repeats)));
-                    fixture.Assert(c => c.Registers.HL.ShouldBe((ushort)(HL + repeats)),
-                        c => c.Registers.DE.ShouldBe((ushort)(DE + repeats)));
+                    fixture.Assert(c => c.Registers.HL.Should().Be((ushort)(HL + repeats)),
+                        c => c.Registers.DE.Should().Be((ushort)(DE + repeats)));
                 }
 
-                fixture.Assert(c => c.Registers.BC.ShouldBe((ushort) 0));
+                fixture.Assert(c => c.Registers.BC.Should().Be((ushort) 0));
             }
         }
     }

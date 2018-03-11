@@ -1,5 +1,5 @@
 ﻿using Retro.Net.Exceptions;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Mmu
@@ -17,10 +17,9 @@ namespace Retro.Net.Tests.Mmu
         {
             var exception = ConstructionShouldThrow<MmuAddressSegmentException>();
 
-            exception.ShouldSatisfyAllConditions(
-                () => exception.AddressSegmentExceptionType.ShouldBe(type),
-                () => exception.AddressFrom.ShouldBe(gapStart),
-                () => exception.AddressTo.ShouldBe(gapEnd));
+            exception.AddressSegmentExceptionType.Should().Be(type);
+            exception.AddressFrom.Should().Be(gapStart);
+            exception.AddressTo.Should().Be(gapEnd);
         }
     }
 

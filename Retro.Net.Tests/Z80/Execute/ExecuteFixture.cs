@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using Autofac.Extras.Moq;
+using AutoFixture;
+using Bogus;
 using Castle.Components.DictionaryAdapter;
 using Retro.Net.Tests.Util;
 using Retro.Net.Tests.Z80.Decode;
@@ -10,19 +12,20 @@ using Retro.Net.Z80.Config;
 using Retro.Net.Z80.Core;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.Core.DynaRec;
+using Retro.Net.Z80.Core.Interfaces;
 using Retro.Net.Z80.Core.Interpreted;
 using Retro.Net.Z80.State;
-using Shouldly;
+using FluentAssertions;
 
 namespace Retro.Net.Tests.Z80.Execute
 {
     public class ExecuteFixture : IDisposable
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         private readonly ushort _address;
         private readonly List<Action<ExecutionContext>> _setups;
         private readonly List<Action<ExecutionContext>> _assertions;
-        private readonly Func<GeneralPurposeRegisterState> _registersFactory;
-        private readonly Func<AccumulatorAndFlagsRegisterState> _accumulatorFactory;
         private InstructionTimings _runtimeTimings;
         private bool _halt;
 
@@ -32,10 +35,8 @@ namespace Retro.Net.Tests.Z80.Execute
             _assertions = new EditableList<Action<ExecutionContext>>();
             _halt = true;
 
-            _address = Rng.Word(0x6000, 0xaaaa);
+            _address = Rng.UShort(0x6000, 0xaaaa);
             Operation = new OperationFactory(_address);
-            _registersFactory = RngFactory.Build<GeneralPurposeRegisterState>();
-            _accumulatorFactory = RngFactory.Build<AccumulatorAndFlagsRegisterState>();
         }
 
         public OperationFactory Operation { get; }
@@ -94,7 +95,7 @@ namespace Retro.Net.Tests.Z80.Execute
             var operations = new List<Operation> { operation };
             if (_halt)
             {
-                operations.Add(new Operation(Rng.Word(operation.Address), OpCode.Halt, Operand.None, Operand.None, FlagTest.None, OpCodeMeta.None, 0, 0, 0));
+                operations.Add(new Operation(Rng.UShort(operation.Address), OpCode.Halt, Operand.None, Operand.None, FlagTest.None, OpCodeMeta.None, 0, 0, 0));
             }
             var decodedBlock = new DecodedBlock(_address, Rng.Int(10, 20), operations, new InstructionTimings(Rng.Int(10, 20), Rng.Int(10, 20)), _halt, false);
 
@@ -103,42 +104,45 @@ namespace Retro.Net.Tests.Z80.Execute
                 mock.Mock<IRuntimeConfig>().Setup(x => x.DebugMode).Returns(true);
                 mock.Mock<IPlatformConfig>().Setup(x => x.CpuMode).Returns(CpuMode.Z80);
                 
-                var context = new ExecutionContext(mock, operation, decodedBlock.Length, _registersFactory(), _accumulatorFactory());
+                var autoFixture = new Fixture();
+                var registers = autoFixture.Create<GeneralPurposeRegisterState>();
+                var accumulator = autoFixture.Create<AccumulatorAndFlagsRegisterState>();
+
+                var context = new ExecutionContext(mock, operation, decodedBlock.Length, registers, accumulator);
                 foreach (var setup in _setups)
                 {
                     setup(context);
                 }
                 
                 var block = mock.Create<TInstructionBlockFactory>().Build(decodedBlock);
-                var assertions = RunAndYieldAssertions(block, decodedBlock, context);
-                block.ShouldSatisfyAllConditions($"{typeof(TInstructionBlockFactory)}: {block.DebugInfo}", assertions.ToArray());
+
+                block.Address.Should().Be(decodedBlock.Address, nameof(block.Address));
+                block.Length.Should().Be(decodedBlock.Length, nameof(block.Length));
+                block.DebugInfo.Should().NotBeNull(nameof(block.DebugInfo));
+                block.HaltCpu.Should().Be(block.HaltCpu, nameof(block.HaltCpu));
+                block.HaltPeripherals.Should().Be(block.HaltPeripherals, nameof(block.HaltPeripherals));
+
+                var timings = block.ExecuteInstructionBlock(context.MockRegisters.Object, context.Mmu.Object, context.Alu.Object, context.Io.Object);
+                var expectedTimings = decodedBlock.Timings + _runtimeTimings;
+                timings.Should().Be(expectedTimings);
+
+                // TODO: also assert I & R on Z80
+                if (_halt)
+                {
+                    context.MockRegisters.VerifySet(x => x.ProgramCounter = context.SyncedProgramCounter);
+                }
+
+                foreach (var assertion in _assertions)
+                {
+                    assertion(context);
+                }
             }
         }
 
-        private IEnumerable<Action> RunAndYieldAssertions(IInstructionBlock block, DecodedBlock decodedBlock, ExecutionContext context)
+        public void Dispose()
         {
-            yield return () => block.Address.ShouldBe(decodedBlock.Address, nameof(block.Address));
-            yield return () => block.Length.ShouldBe(decodedBlock.Length, nameof(block.Length));
-            yield return () => block.DebugInfo.ShouldNotBeNullOrEmpty(nameof(block.DebugInfo));
-            yield return () => block.HaltCpu.ShouldBe(block.HaltCpu, nameof(block.HaltCpu));
-            yield return () => block.HaltPeripherals.ShouldBe(block.HaltPeripherals, nameof(block.HaltPeripherals));
-
-            var timings = block.ExecuteInstructionBlock(context.MockRegisters.Object, context.Mmu.Object, context.Alu.Object, context.Io.Object);
-            var expectedTimings = decodedBlock.Timings + _runtimeTimings;
-            yield return () => timings.ShouldBe(expectedTimings);
-
-            // TODO: also assert I & R on Z80
-            if (_halt)
-            {
-                yield return () => context.MockRegisters.VerifySet(x => x.ProgramCounter = context.SyncedProgramCounter);
-            }
-
-            foreach (var assertion in _assertions)
-            {
-                yield return () => assertion(context);
-            }
+            Test<DynaRec>();
+            Test<Interpreter>();
         }
-
-        public void Dispose() => "All cores".ShouldSatisfyAllConditions("", Test<DynaRec>, Test<Interpreter>);
     }
 }

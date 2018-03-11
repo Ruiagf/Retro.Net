@@ -1,6 +1,6 @@
 ﻿using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.Registers;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -17,7 +17,7 @@ namespace Retro.Net.Tests.Z80.Execute
             using (var fixture = new ExecuteFixture())
             {
                 fixture.Operation.OpCode(OpCode.NegateOnesComplement);
-                fixture.Assert(c => c.Accumulator.A.ShouldBe((byte)~c.InitialAccumulator.A));
+                fixture.Assert(c => c.Accumulator.A.Should().Be((byte)~c.InitialAccumulator.A));
                 fixture.AssertFlags(c => c.Accumulator.A, halfCarry: true, subtract: true);
             }
         }
@@ -29,7 +29,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(OpCode.DecimalArithmeticAdjust);
                 fixture.With(c => c.Alu.Setup(alu => alu.DecimalAdjust(c.Accumulator.A, true)).Returns(c.Byte).Verifiable());
-                fixture.Assert(c => c.Accumulator.A.ShouldBe(c.Byte));
+                fixture.Assert(c => c.Accumulator.A.Should().Be(c.Byte));
             }
         }
 
@@ -50,7 +50,7 @@ namespace Retro.Net.Tests.Z80.Execute
             {
                 fixture.Operation.OpCode(OpCode.NegateTwosComplement);
                 fixture.With(c => c.Alu.Setup(alu => alu.Subtract(0, c.Accumulator.A)).Returns(c.Byte).Verifiable());
-                fixture.Assert(c => c.Accumulator.A.ShouldBe(c.Byte));
+                fixture.Assert(c => c.Accumulator.A.Should().Be(c.Byte));
             }
         }
 

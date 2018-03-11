@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Bogus;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
@@ -9,6 +10,8 @@ namespace Retro.Net.Tests.Z80.Decode
 {
     public class RotateAndShiftTests
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         [Theory]
         [InlineData(PrefixCbOpCode.RLC_A, Operand.A)]
         [InlineData(PrefixCbOpCode.RLC_B, Operand.B)]

@@ -2,7 +2,7 @@
 using Moq;
 using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Z80.Execute
@@ -37,8 +37,8 @@ namespace Retro.Net.Tests.Z80.Execute
             using (var fixture = new ExecuteFixture())
             {
                 fixture.Operation.OpCode(OpCode.Exchange).Operands(o0, o1);
-                fixture.Assert(c => c.Operand16(o0).ShouldBe(c.InitialRegister16(o1)),
-                    c => c.Operand16(o1).ShouldBe(c.InitialRegister16(o0)));
+                fixture.Assert(c => c.Operand16(o0).Should().Be(c.InitialRegister16(o1)),
+                    c => c.Operand16(o1).Should().Be(c.InitialRegister16(o0)));
             }
         }
 

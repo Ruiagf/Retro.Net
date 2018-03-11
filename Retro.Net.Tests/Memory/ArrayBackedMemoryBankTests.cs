@@ -1,8 +1,9 @@
+using System;
 using Retro.Net.Config;
 using Retro.Net.Exceptions;
 using Retro.Net.Memory;
 using Retro.Net.Tests.Util;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Memory
@@ -16,7 +17,7 @@ namespace Retro.Net.Tests.Memory
 
         public ArrayBackedMemoryBankTests()
         {
-            var memoryBankConfig = The<IMemoryBankConfig>();
+            var memoryBankConfig = Mock<IMemoryBankConfig>();
             memoryBankConfig.Setup(x => x.Address).Returns(Address);
             memoryBankConfig.Setup(x => x.Length).Returns(Length);
             memoryBankConfig.Setup(x => x.InitialState).Returns(() => InitialState);
@@ -27,9 +28,11 @@ namespace Retro.Net.Tests.Memory
         {
             const ushort byteArrayAddress = Length / 4;
             var writtenBytes = Rng.Bytes(Length / 2);
-            Subject.WriteBytes(byteArrayAddress, writtenBytes);
+            Subject.WriteBytes(byteArrayAddress, writtenBytes, 0, writtenBytes.Length);
 
-            Subject.ReadBytes(byteArrayAddress, writtenBytes.Length).ShouldBe(writtenBytes);
+            var readBytes = new byte[writtenBytes.Length];
+            Subject.ReadBytes(byteArrayAddress, readBytes, 0, writtenBytes.Length);
+            readBytes.Should().BeEquivalentTo(writtenBytes);
         }
 
         [Fact]
@@ -46,31 +49,17 @@ namespace Retro.Net.Tests.Memory
                 readBytes[i] = Subject.ReadByte(i);
             }
 
-            readBytes.ShouldBe(writtenBytes);
-        }
-
-        [Fact]
-        public void When_reading_and_writing_single_words()
-        {
-            var readWords = new ushort[Length];
-            var writtenWords = new ushort[Length];
-
-            for (ushort i = 0; i < Length - 1; i++)
-            {
-                var w = Rng.Word();
-                writtenWords[i] = w;
-                Subject.WriteWord(i, w);
-                readWords[i] = Subject.ReadWord(i);
-            }
-
-            readWords.ShouldBe(writtenWords);
+            readBytes.Should().BeEquivalentTo(writtenBytes);
         }
 
         [Fact]
         public void When_seting_initial_state()
         {
             InitialState = Rng.Bytes(Length);
-            Subject.ReadBytes(0, Length).ShouldBe(InitialState);
+
+            var readBytes = new byte[Length];
+            Subject.ReadBytes(0, readBytes, 0, Length);
+            readBytes.Should().BeEquivalentTo(InitialState);
         }
 
         [Fact]
@@ -83,9 +72,9 @@ namespace Retro.Net.Tests.Memory
         {
             InitialState = new byte[length];
             var exception = ConstructionShouldThrow<MemoryConfigStateException>();
-            exception.Adddress.ShouldBe(Address);
-            exception.SegmentLength.ShouldBe(Length);
-            exception.StateLength.ShouldBe(length);
+            exception.Adddress.Should().Be(Address);
+            exception.SegmentLength.Should().Be(Length);
+            exception.StateLength.Should().Be(length);
         }
     }
 }

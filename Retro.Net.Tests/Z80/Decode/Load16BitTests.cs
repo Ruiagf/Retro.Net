@@ -1,4 +1,5 @@
-﻿using Retro.Net.Tests.Util;
+﻿using Bogus;
+using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
 using Xunit;
@@ -7,6 +8,8 @@ namespace Retro.Net.Tests.Z80.Decode
 {
     public class Load16BitTests
     {
+        private static readonly Randomizer Rng = new Faker().Random;
+
         [Theory]
         [InlineData(PrimaryOpCode.LD_BC_nn, Operand.BC)]
         [InlineData(PrimaryOpCode.LD_DE_nn, Operand.DE)]
@@ -14,7 +17,7 @@ namespace Retro.Net.Tests.Z80.Decode
         [InlineData(PrimaryOpCode.LD_SP_nn, Operand.SP)]
         public void LD_dd_nn(PrimaryOpCode op, Operand dd)
         {
-            var literal = Rng.Word();
+            var literal = Rng.UShort();
             using (var fixture = new DecodeFixture(3, 10, op, literal))
             {
                 fixture.Expected.OpCode(OpCode.Load16).Operands(dd, Operand.nn).WordLiteral(literal);
@@ -100,7 +103,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestZ80WordIndexed(PrefixEdOpCode op, Operand o0, Operand o1)
         {
-            var literal = Rng.Word();
+            var literal = Rng.UShort();
             using (var fixture = new DecodeFixture(6, 20, PrimaryOpCode.Prefix_ED, op, literal).ThrowUnlessZ80())
             {
                 fixture.Expected.OpCode(OpCode.Load16).Operands(o0, o1).WordLiteral(literal);
@@ -125,7 +128,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestIndex(PrimaryOpCode op, Operand o0, Operand o1)
         {
-            var literal = Rng.Word();
+            var literal = Rng.UShort();
             using (var fixture = new DecodeFixture(5, 16, op, literal).NotOnGameboy())
             {
                 fixture.Expected.OpCode(OpCode.Load16).Operands(o0, o1).WordLiteral(literal);
@@ -134,7 +137,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestZ80Index(PrimaryOpCode prefix, PrimaryOpCode op, Operand o0, Operand o1, int maxhineCycles = 6, int throttlineStates = 20)
         {
-            var literal = Rng.Word();
+            var literal = Rng.UShort();
             using (var fixture = new DecodeFixture(maxhineCycles, throttlineStates, prefix, op, literal).ThrowUnlessZ80())
             {
                 fixture.Expected.OpCode(OpCode.Load16).Operands(o0, o1).WordLiteral(literal);

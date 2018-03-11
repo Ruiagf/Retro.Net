@@ -1,4 +1,5 @@
-﻿using Retro.Net.Tests.Util;
+﻿using Bogus;
+using Retro.Net.Tests.Util;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.OpCodes;
 using Xunit;
@@ -67,7 +68,7 @@ namespace Retro.Net.Tests.Z80.Decode
 
         private static void TestByteLiteral(PrimaryOpCode op, OpCode excepted = OpCode.Input)
         {
-            var literal = Rng.Byte();
+            var literal = new Faker().Random.Byte();
             using (var fixture = new DecodeFixture(3, 11, op, literal).ThrowOnGameboy())
             {
                 fixture.Expected.OpCode(excepted).Operands(Operand.A, Operand.n).ByteLiteral(literal);

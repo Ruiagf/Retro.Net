@@ -1,9 +1,11 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using Moq;
 using Retro.Net.Memory;
+using Retro.Net.Memory.Interfaces;
 using Retro.Net.Tests.Util;
-using Shouldly;
+using FluentAssertions;
 using Xunit;
 
 namespace Retro.Net.Tests.Mmu
@@ -18,12 +20,9 @@ namespace Retro.Net.Tests.Mmu
         {
             _bytes = Rng.Bytes(ushort.MaxValue);
             
-            var mmu = The<IMmu>();
-            mmu.Setup(x => x.ReadBytes(It.IsAny<ushort>(), It.IsAny<int>()))
-                .Returns((ushort address, int length) => _bytes.Skip(address).Take(length).ToArray());
-            mmu.Setup(x => x.ReadWord(It.IsAny<ushort>())).Returns((ushort address) => BitConverter.ToUInt16(_bytes, address));
-            mmu.Setup(x => x.ReadByte(It.IsAny<ushort>())).Returns((ushort address) => _bytes[address]);
-            Subject.ReBuildCache(Address);
+            var mmu = Mock<IMmu>();
+            mmu.Setup(x => x.GetStream(0, true, false)).Returns(new MemoryStream(_bytes));
+            Subject.Seek(Address);
         }
 
         [Fact]
@@ -34,7 +33,7 @@ namespace Retro.Net.Tests.Mmu
 
             var expected = _bytes.Skip(Address).Take(PrefetchCount).ToArray();
 
-            bytes.ShouldBe(expected);
+            bytes.Should().BeEquivalentTo(expected);
         }
 
         [Fact]
@@ -45,7 +44,7 @@ namespace Retro.Net.Tests.Mmu
 
             var expected = _bytes.Skip(Address).Take(PrefetchCount).ToArray();
 
-            bytes.ShouldBe(expected);
+            bytes.Should().BeEquivalentTo(expected);
         }
 
         [Fact]
@@ -56,14 +55,14 @@ namespace Retro.Net.Tests.Mmu
 
             var expected = _bytes.Skip(Address).Take(PrefetchCount).ToArray();
 
-            bytes.ShouldBe(expected);
+            bytes.Should().BeEquivalentTo(expected);
 
             // Now read some more bytes
             bytes = Enumerable.Range(0, PrefetchCount).Select(i => Subject.NextByte()).ToArray();
 
             expected = _bytes.Skip(Address + PrefetchCount).Take(PrefetchCount).ToArray();
 
-            bytes.ShouldBe(expected);
+            bytes.Should().BeEquivalentTo(expected);
         }
 
         [Fact]
@@ -76,7 +75,7 @@ namespace Retro.Net.Tests.Mmu
             }
 
             // Read words
-            Enumerable.Range(0, PrefetchCount).Select(i => Subject.NextWord()).ShouldBe(expected);
+            Enumerable.Range(0, PrefetchCount).Select(i => Subject.NextWord()).Should().BeEquivalentTo(expected);
         }
     }
 }

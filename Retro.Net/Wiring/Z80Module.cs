@@ -2,13 +2,18 @@
 using Autofac;
 using Retro.Net.Memory;
 using Retro.Net.Memory.Dma;
+using Retro.Net.Memory.Interfaces;
 using Retro.Net.Timing;
 using Retro.Net.Util;
+using Retro.Net.Wiring.Interfaces;
 using Retro.Net.Z80.Cache;
+using Retro.Net.Z80.Cache.Interfaces;
 using Retro.Net.Z80.Config;
 using Retro.Net.Z80.Core;
+using Retro.Net.Z80.Core.Debug;
 using Retro.Net.Z80.Core.Decode;
 using Retro.Net.Z80.Core.DynaRec;
+using Retro.Net.Z80.Core.Interfaces;
 using Retro.Net.Z80.Core.Interpreted;
 using Retro.Net.Z80.Memory;
 using Retro.Net.Z80.Peripherals;
@@ -76,24 +81,33 @@ namespace Retro.Net.Wiring
                     throw new ArgumentOutOfRangeException(nameof(_platformConfig.CpuMode), _platformConfig.CpuMode, null);
             }
 
+            builder.RegisterType<CpuCore>().As<ICpuCore>().InZ80Scope();
             builder.RegisterType<PeripheralManager>().As<IPeripheralManager>().InZ80Scope();
             builder.RegisterType<PrefetchQueue>().As<IPrefetchQueue>().InZ80Scope();
             builder.RegisterType<Alu>().As<IAlu>().InZ80Scope();
-            builder.RegisterType<InstructionBlockCache>().As<IInstructionBlockCache>().InZ80Scope();
-            builder.RegisterType<InterruptManager>().As<IInterruptManager>().InZ80Scope();
+            builder.RegisterType<InterruptService>().As<IInterruptService>().InZ80Scope();
             builder.RegisterType<InstructionTimer>().As<IInstructionTimer>().InZ80Scope();
             builder.RegisterType<OpCodeDecoder>().As<IOpCodeDecoder>().InZ80Scope();
             builder.RegisterType<MessageBus>().As<IMessageBus>().InZ80Scope();
 
+            if (_runtimeConfig.DebugMode)
+            {
+                builder.RegisterType<CpuCoreDebugger>().As<ICpuCoreDebugger>();
+            }
+            else
+            {
+                builder.RegisterType<NullCpuCoreDebugger>().As<ICpuCoreDebugger>();
+            }
+
             switch (_runtimeConfig.CoreMode)
             {
                 case CoreMode.Interpreted:
-                    builder.RegisterType<CpuCore>().As<ICpuCore>().InZ80Scope();
+                    builder.RegisterType<NullInstructionBlockCache>().As<IInstructionBlockCache>().InZ80Scope();
                     builder.RegisterType<Interpreter>().As<IInstructionBlockFactory>().InZ80Scope();
                     builder.RegisterType<Z80Mmu>().As<IMmu>().InZ80Scope();
                     break;
                 case CoreMode.DynaRec:
-                    builder.RegisterType<CachingCpuCore>().As<ICpuCore>().InZ80Scope();
+                    builder.RegisterType<InstructionBlockCache>().As<IInstructionBlockCache>().InZ80Scope();
                     builder.RegisterType<DynaRec>().As<IInstructionBlockFactory>().InZ80Scope();
                     builder.RegisterType<CacheAwareZ80Mmu>().As<IMmu>().InZ80Scope();
                     break;
